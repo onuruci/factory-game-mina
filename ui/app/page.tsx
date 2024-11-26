@@ -1,151 +1,155 @@
 'use client';
-import Head from 'next/head';
-import Image from 'next/image';
-import { useEffect } from 'react';
-import GradientBG from '../components/GradientBG.js';
+import { Field, PrivateKey } from 'o1js';
+import { useEffect, useState } from 'react';
 import styles from '../styles/Home.module.css';
-import heroMinaLogo from '../public/assets/hero-mina-logo.svg';
-import arrowRightSmall from '../public/assets/arrow-right-small.svg';
-
 import './reactCOIServiceWorker';
+import ZkappWorkerClient from './zkappWorkerClient';
+
+
+import FaucetDirect from './components/FaucetDirect';
+import Setup from './components/Setup';
+import TabPanel from './components/TabPanel';
+import Game from './components/Game/Game';
+
+let transactionFee = 0.1;
+const ZKAPP_ADDRESS = 'B62qpXPvmKDf4SaFJynPsT6DyvuxMS9H1pT4TGonDT26m599m7dS9gP';
 
 export default function Home() {
-  useEffect(() => {
-    (async () => {
-      const { Mina, PublicKey } = await import('o1js');
-      const { Add } = await import('../../contracts/build/src/');
+  const [zkappWorkerClient, setZkappWorkerClient] = useState<null | ZkappWorkerClient>(null);
+  const [hasWallet, setHasWallet] = useState<null | boolean>(null);
+  const [hasBeenSetup, setHasBeenSetup] = useState(false);
+  const [accountExists, setAccountExists] = useState(false);
+  const [currentNum, setCurrentNum] = useState<null | Field>(null);
+  const [publicKeyBase58, setPublicKeyBase58] = useState('');
+  const [creatingTransaction, setCreatingTransaction] = useState(false);
+  const [displayText, setDisplayText] = useState('');
+  const [transactionlink, setTransactionLink] = useState('');
+  
+  const displayStep = (step: string) => {
+    setDisplayText(step)
+    console.log(step)
+  }
 
-      // Update this to use the address (public key) for your zkApp account.
-      // To try it out, you can try this address for an example "Add" smart contract that we've deployed to
-      // Testnet B62qnTDEeYtBHBePA4yhCt4TCgDtA4L2CGvK7PirbJyX4pKH8bmtWe5.
-      const zkAppAddress = '';
-      // This should be removed once the zkAppAddress is updated.
-      if (!zkAppAddress) {
-        console.error(
-          'The following error is caused because the zkAppAddress has an empty string as the public key. Update the zkAppAddress with the public key for your zkApp account, or try this address for an example "Add" smart contract that we deployed to Testnet: B62qnTDEeYtBHBePA4yhCt4TCgDtA4L2CGvK7PirbJyX4pKH8bmtWe5'
-        );
+  // -------------------------------------------------------
+  // Do Setup
+
+  useEffect(() => {
+    const setup = async () => {
+      try {
+        if (!hasBeenSetup) {
+          displayStep('Loading web worker...')
+          const zkappWorkerClient = new ZkappWorkerClient();
+          setZkappWorkerClient(zkappWorkerClient);
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+          displayStep('Done loading web worker')
+
+          await zkappWorkerClient.loadContract();
+
+
+          await zkappWorkerClient.setActiveInstanceToLocal();
+
+
+
+          const currentNum = await zkappWorkerClient.getHash();
+          console.log(`Current state in zkApp: ${currentNum}`);
+
+          
+          setHasBeenSetup(true);
+          setHasWallet(true);
+          setDisplayText(currentNum.toString());
+        }
+      } catch (error: any) {
+        displayStep(`Error during setup: ${error.message}`);
       }
-      //const zkApp = new Add(PublicKey.fromBase58(zkAppAddress))
-    })();
+    };
+
+    setup();
   }, []);
 
+  // -------------------------------------------------------
+  // Send a transaction
+
+//   const onSendTransaction = async () => {
+//     setCreatingTransaction(true);
+//     displayStep('Creating a transaction...');
+   
+//     console.log('publicKeyBase58 sending to worker', publicKeyBase58);
+//     await zkappWorkerClient!.fetchAccount(publicKeyBase58);
+
+//     await zkappWorkerClient!.createUpdateTransaction();
+
+//     displayStep('Creating proof...');
+//     await zkappWorkerClient!.proveUpdateTransaction();
+
+//     displayStep('Requesting send transaction...');
+//     const transactionJSON = await zkappWorkerClient!.getTransactionJSON();
+
+//     displayStep('Getting transaction JSON...');
+//     const { hash } = await (window as any).mina.sendTransaction({
+//       transaction: transactionJSON,
+//       feePayer: {
+//         fee: transactionFee,
+//         memo: '',
+//       },
+//     });
+
+//     const transactionLink = `https://minascan.io/devnet/tx/${hash}`;
+//     setTransactionLink(transactionLink);
+//     setDisplayText(transactionLink);
+
+//     setCreatingTransaction(true);
+//   };
+
+  // -------------------------------------------------------
+  // Refresh the current state
+
+//   const onRefreshCurrentNum = async () => {
+//     try {
+//       displayStep('Getting zkApp state...');
+//       await zkappWorkerClient!.fetchAccount(ZKAPP_ADDRESS);
+//       const currentNum = await zkappWorkerClient!.getNum();
+//       setCurrentNum(currentNum);
+//       console.log(`Current state in zkApp: ${currentNum}`);
+//       setDisplayText('');
+//     } catch (error: any) {
+//       displayStep(`Error refreshing state: ${error.message}`);
+//     }
+//   };
+
+
+  let mainContent;
+  if (hasBeenSetup && accountExists) {
+    mainContent = (
+      <div style={{ justifyContent: 'center', alignItems: 'center' }}>
+        <div className={styles.center} style={{ padding: 0 }}>
+          Current state in zkApp: {currentNum?.toString()}{' '}
+        </div>
+        <button
+          className={styles.card}
+          onClick={() => {}}
+          disabled={creatingTransaction}
+        >
+          Send Transaction
+        </button>
+        <button className={styles.card} onClick={()=>{}}>
+          Get Latest State
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <>
-      <Head>
-        <title>Mina zkApp UI</title>
-        <meta name="description" content="built with o1js" />
-        <link rel="icon" href="/assets/favicon.ico" />
-      </Head>
-      <GradientBG>
-        <main className={styles.main}>
-          <div className={styles.center}>
-            <a
-              href="https://minaprotocol.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Image
-                className={styles.logo}
-                src={heroMinaLogo}
-                alt="Mina Logo"
-                width="191"
-                height="174"
-                priority
-              />
-            </a>
-            <p className={styles.tagline}>
-              built with
-              <code className={styles.code}> o1js</code>
-            </p>
-          </div>
-          <p className={styles.start}>
-            Get started by editing
-            <code className={styles.code}> app/page.tsx</code>
-          </p>
-          <div className={styles.grid}>
-            <a
-              href="https://docs.minaprotocol.com/zkapps"
-              className={styles.card}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <h2>
-                <span>DOCS</span>
-                <div>
-                  <Image
-                    src={arrowRightSmall}
-                    alt="Mina Logo"
-                    width={16}
-                    height={16}
-                    priority
-                  />
-                </div>
-              </h2>
-              <p>Explore zkApps, how to build one, and in-depth references</p>
-            </a>
-            <a
-              href="https://docs.minaprotocol.com/zkapps/tutorials/hello-world"
-              className={styles.card}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <h2>
-                <span>TUTORIALS</span>
-                <div>
-                  <Image
-                    src={arrowRightSmall}
-                    alt="Mina Logo"
-                    width={16}
-                    height={16}
-                    priority
-                  />
-                </div>
-              </h2>
-              <p>Learn with step-by-step o1js tutorials</p>
-            </a>
-            <a
-              href="https://discord.gg/minaprotocol"
-              className={styles.card}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <h2>
-                <span>QUESTIONS</span>
-                <div>
-                  <Image
-                    src={arrowRightSmall}
-                    alt="Mina Logo"
-                    width={16}
-                    height={16}
-                    priority
-                  />
-                </div>
-              </h2>
-              <p>Ask questions on our Discord server</p>
-            </a>
-            <a
-              href="https://docs.minaprotocol.com/zkapps/how-to-deploy-a-zkapp"
-              className={styles.card}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <h2>
-                <span>DEPLOY</span>
-                <div>
-                  <Image
-                    src={arrowRightSmall}
-                    alt="Mina Logo"
-                    width={16}
-                    height={16}
-                    priority
-                  />
-                </div>
-              </h2>
-              <p>Deploy a zkApp to Testnet</p>
-            </a>
-          </div>
-        </main>
-      </GradientBG>
-    </>
+    <div className="min-h-screen">
+      <div className="lg:flex">
+        <div className="lg:w-1/3 w-full bg-white p-6 h-screen">
+            <Setup hasWallet={hasWallet} transactionlink={transactionlink} displayText={displayText}/>
+            {mainContent}
+        </div>
+
+        <div className="lg:w-2/3 w-full min-h-screen bg-white p-6 border-l-2 border-black mt-8 lg:mt-0">
+          <TabPanel child1={<Game/>}/>
+        </div>
+      </div>
+    </div>
   );
 }
