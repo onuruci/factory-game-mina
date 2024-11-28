@@ -46,6 +46,8 @@ export class Factory extends SmartContract {
             }
         }
 
+        console.log(h);
+
         let a = this.hash_of_array.requireEquals(h);
 
         const left = Field(10);
@@ -121,7 +123,7 @@ export class Factory extends SmartContract {
     }
 
 
-    @method async incrementSecret(x: Field,y: Field, value: Field, secretmap: Gamemap) {
+    @method async changeMap(x: Field, y: Field, value: Field, secretmap: Gamemap) {
         let h = Poseidon.hash([]);
 
         for(let i= 0; i < 7 ; i++) {
@@ -136,7 +138,8 @@ export class Factory extends SmartContract {
 
         for(let i= 0; i < 7 ; i++) {
             for(let j = 0; j < 7; j++) {
-                h = Poseidon.hash([h, secretmap.gamemap[i].values[j]]);
+                let f = Provable.if(Bool.and(x.equals(i), y.equals(j)), value, secretmap.gamemap[i].values[j]);
+                h = Poseidon.hash([h, f]);
             }
         }
 

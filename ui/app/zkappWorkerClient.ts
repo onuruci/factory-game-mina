@@ -1,5 +1,13 @@
-import { Field } from 'o1js';
+import { Field, Struct } from 'o1js';
 import * as Comlink from "comlink";
+
+class Line extends Struct({
+  values: [Field, Field, Field, Field, Field, Field, Field],
+}) {}
+
+class Gamemap extends Struct({
+  gamemap: [Line, Line, Line, Line, Line, Line, Line],
+}) {}
 
 export default class ZkappWorkerClient {
   // ---------------------------------------------------------------------------------------
@@ -26,9 +34,25 @@ export default class ZkappWorkerClient {
     return this.remoteApi.compileContract();
   }
 
-  async getHash(): Promise<String> {
+  async getHash(): Promise<String | undefined> {
     const result = await this.remoteApi.getHash();
     return result;
+  }
+
+  async getCoins(): Promise<String | undefined> {
+    const result = await this.remoteApi.getCoins();
+    return result;
+  }
+
+  async work(gameMap : Array<number>): Promise<String | undefined> {
+    await this.remoteApi.work(gameMap);
+
+    const result = await this.remoteApi.getCoins();
+    return result;
+  }
+
+  async changeMap(i: number, j: number, value: number, gameArr : Array<number>) {
+    await this.remoteApi.changeMap(i, j, value, gameArr);
   }
 
 }

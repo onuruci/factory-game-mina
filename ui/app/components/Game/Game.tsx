@@ -1,6 +1,8 @@
 import React from "react";
-import { useState, useEffect } from "react";
+import { Field, Struct } from 'o1js';
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import ZkappWorkerClient from "../../zkappWorkerClient";
 import GridElement from "../GridElement";
 
 import one_inactive from "../../utils/images/one_inactive.png";
@@ -8,19 +10,29 @@ import five_inactive from "../../utils/images/five_inactive.png";
 import left_image from "../../utils/images/left-image.png";
 import right_image from "../../utils/images/turn-right.png";
 import cancel_image from "../../utils/images/cancel.png";
+import { read } from "fs";
 
-const Game = () => {
-    const [gameMap, setGameMap] = useState(
-        [
-            7, 1, 0, 0, 0, 0, 0,
-            3, 2, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0,
-        ]
-    );
+class Line extends Struct({
+    values: [Field, Field, Field, Field, Field, Field, Field],
+}) {}
+
+class Gamemap extends Struct({
+    gamemap: [Line, Line, Line, Line, Line, Line, Line],
+}) {}
+
+interface GameProps {
+    zkappWorkerClient: null | ZkappWorkerClient,
+    gameMap: Array<number>,
+    setGameMap: any,
+    setCurrentHash: any,
+    setCurrentCoins: any,
+    ready: boolean,
+    setReady: any,
+    displayStep: any
+}
+
+
+const Game = ({zkappWorkerClient, gameMap, setGameMap, setCurrentHash, setCurrentCoins, ready, setReady, displayStep} : GameProps) => {
     const [selectedI, setI] = useState(0);
     const [selectedJ, setJ] = useState(0);
     const [active, setActive] = useState(false);
@@ -32,6 +44,7 @@ const Game = () => {
 
     const handleChange = (i: number) => {
         if(selectedI === 0 && selectedJ === 0) return;
+        if(!ready) return;
 
         let arr = gameMap;
         arr[selectedI*7+selectedJ] = i;
@@ -41,6 +54,8 @@ const Game = () => {
 
     const handleTurnLeft = () => {
         if(selectedI === 0 && selectedJ === 0) return;
+        if(!ready) return;
+
         let arr = gameMap;
 
         let s = arr[selectedI*7+selectedJ];
@@ -59,6 +74,7 @@ const Game = () => {
 
     const handleCancel = () => {
         if(selectedI === 0 && selectedJ === 0) return;
+        if(!ready) return;
 
         let arr = gameMap;
         let s = arr[selectedI*7+selectedJ];
@@ -71,6 +87,7 @@ const Game = () => {
 
     const handleTurnRight = () => {
         if(selectedI === 0 && selectedJ === 0) return;
+        if(!ready) return;
         let arr = gameMap;
 
         let s = arr[selectedI*7+selectedJ];
@@ -87,6 +104,64 @@ const Game = () => {
         arr[selectedI*7+selectedJ] = s;
         setGameMap([...arr]);
     }
+
+    useEffect(() => {
+        const work = async () => {
+            if(active && zkappWorkerClient != null) {
+                try {
+                    displayStep("There is an active path working the factory");
+                    let c = await zkappWorkerClient?.work(gameMap)
+
+                    let a = await zkappWorkerClient?.getCoins();
+
+                    displayStep("Gained coins");
+                    console.log("Coins: ", a);
+                    setCurrentCoins(a);
+
+                    if(active) {
+                        setTimeout(() => {
+                            work();
+                        }, 1000)
+                    }
+
+                    console.log("Coins: ",c);
+                } catch (e) {
+                    console.log(e);
+                    displayStep("Active path is broken");
+                }
+            }
+        }
+
+        if(active) {
+            work();
+        }
+        
+    }, [active]);
+
+    useEffect(() => {
+        const changeMap = async () => {
+            setReady(false)
+            displayStep("Game map is being updated on chain");
+
+            let i = selectedI*7 + selectedJ;
+
+            console.log("Changed index: ", i);
+            if(i > 0) {
+                await zkappWorkerClient?.changeMap(parseInt((i/7).toString()), i%7, gameMap[i], gameMap);
+            
+                let a = await zkappWorkerClient?.getHash();
+                setCurrentHash(a);
+            }
+
+            displayStep("Map hash has changed you can continue playing");
+            setReady(true);
+        }
+
+        if(ready) {
+            changeMap();
+        }
+
+    }, [gameMap]);
 
     useEffect(() => {
         let i = 0;

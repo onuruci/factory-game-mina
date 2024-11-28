@@ -29,9 +29,6 @@ const Setup = ({hasWallet, transactionlink, displayText} : SetupProps) => {
             style={{ fontWeight: 'bold', fontSize: '1.5rem', paddingBottom: '5rem' }}
         >
             {stepDisplay}
-            {
-                !hasWallet && <CheckWallet/>
-            }
         </div>
     );
 }

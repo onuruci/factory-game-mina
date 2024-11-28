@@ -20,10 +20,25 @@ export default function Home() {
   const [hasBeenSetup, setHasBeenSetup] = useState(false);
   const [accountExists, setAccountExists] = useState(false);
   const [currentNum, setCurrentNum] = useState<null | Field>(null);
-  const [publicKeyBase58, setPublicKeyBase58] = useState('');
   const [creatingTransaction, setCreatingTransaction] = useState(false);
   const [displayText, setDisplayText] = useState('');
   const [transactionlink, setTransactionLink] = useState('');
+  const [currentHash, setCurrentHash] = useState<String | undefined>('');
+  const [currentCoins, setCurrentCoins] = useState<String | undefined>('');
+  const [ready, setReady] = useState(false);
+
+  const [gameMap, setGameMap] = useState(
+    [
+        7, 1, 0, 0, 0, 0, 0,
+        3, 2, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0,
+    ]
+);
+
   
   const displayStep = (step: string) => {
     setDisplayText(step)
@@ -41,22 +56,29 @@ export default function Home() {
           const zkappWorkerClient = new ZkappWorkerClient();
           setZkappWorkerClient(zkappWorkerClient);
           await new Promise((resolve) => setTimeout(resolve, 5000));
-          displayStep('Done loading web worker')
-
+          displayStep('Done loading web worker, loading the contract')
           await zkappWorkerClient.loadContract();
-
-
+          displayStep('Done loading the contract, starting local network')
           await zkappWorkerClient.setActiveInstanceToLocal();
+          displayStep('Local network is working and contract is deployed!')
+
+          setTimeout(() => {
+            displayStep('Game is ready you can start playing');
+            setReady(true);
+          }, 1000);
 
 
 
-          const currentNum = await zkappWorkerClient.getHash();
-          console.log(`Current state in zkApp: ${currentNum}`);
+          const hash = await zkappWorkerClient.getHash();
+          setCurrentHash(hash);
+
+          const coins = await zkappWorkerClient?.getCoins();
+          setCurrentCoins(coins);
 
           
           setHasBeenSetup(true);
           setHasWallet(true);
-          setDisplayText(currentNum.toString());
+          //setDisplayText(currentNum.toString());
         }
       } catch (error: any) {
         displayStep(`Error during setup: ${error.message}`);
@@ -65,56 +87,6 @@ export default function Home() {
 
     setup();
   }, []);
-
-  // -------------------------------------------------------
-  // Send a transaction
-
-//   const onSendTransaction = async () => {
-//     setCreatingTransaction(true);
-//     displayStep('Creating a transaction...');
-   
-//     console.log('publicKeyBase58 sending to worker', publicKeyBase58);
-//     await zkappWorkerClient!.fetchAccount(publicKeyBase58);
-
-//     await zkappWorkerClient!.createUpdateTransaction();
-
-//     displayStep('Creating proof...');
-//     await zkappWorkerClient!.proveUpdateTransaction();
-
-//     displayStep('Requesting send transaction...');
-//     const transactionJSON = await zkappWorkerClient!.getTransactionJSON();
-
-//     displayStep('Getting transaction JSON...');
-//     const { hash } = await (window as any).mina.sendTransaction({
-//       transaction: transactionJSON,
-//       feePayer: {
-//         fee: transactionFee,
-//         memo: '',
-//       },
-//     });
-
-//     const transactionLink = `https://minascan.io/devnet/tx/${hash}`;
-//     setTransactionLink(transactionLink);
-//     setDisplayText(transactionLink);
-
-//     setCreatingTransaction(true);
-//   };
-
-  // -------------------------------------------------------
-  // Refresh the current state
-
-//   const onRefreshCurrentNum = async () => {
-//     try {
-//       displayStep('Getting zkApp state...');
-//       await zkappWorkerClient!.fetchAccount(ZKAPP_ADDRESS);
-//       const currentNum = await zkappWorkerClient!.getNum();
-//       setCurrentNum(currentNum);
-//       console.log(`Current state in zkApp: ${currentNum}`);
-//       setDisplayText('');
-//     } catch (error: any) {
-//       displayStep(`Error refreshing state: ${error.message}`);
-//     }
-//   };
 
 
   let mainContent;
@@ -144,10 +116,23 @@ export default function Home() {
         <div className="lg:w-1/3 w-full bg-white p-6 h-screen">
             <Setup hasWallet={hasWallet} transactionlink={transactionlink} displayText={displayText}/>
             {mainContent}
+            Current Hash of the map:  {currentHash?.slice(0,10)+"..."+currentHash?.slice(70)}
+            <br/>
+            Current coins:  {currentCoins}
+
         </div>
 
         <div className="lg:w-2/3 w-full min-h-screen bg-white p-6 border-l-2 border-black mt-8 lg:mt-0">
-          <TabPanel child1={<Game/>}/>
+          <TabPanel child1={
+            <Game zkappWorkerClient={zkappWorkerClient} 
+              gameMap={gameMap} setGameMap={setGameMap} 
+              setCurrentHash={setCurrentHash} 
+              setCurrentCoins={setCurrentCoins} 
+              ready={ready}
+              setReady={setReady}
+              displayStep={displayStep}
+              />
+            }/>
         </div>
       </div>
     </div>
