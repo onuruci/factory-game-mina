@@ -27,5 +27,9 @@ This step will focus on building a logic with more features. At this stage there
 FactoryCircuit's social logic will be developed at this step. Users will be able to trade assets, make agreements among each others using smart contracts and collabrate or battle with each other for gaining assets.
 
 
+This game is inspired from 
+https://doonutsaur.itch.io/tiny-hamsters
+
+
 
 
